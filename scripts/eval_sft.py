@@ -17,7 +17,7 @@ import re
 from pathlib import Path
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForImageTextToText, AutoTokenizer
 
 ROOT = Path(__file__).resolve().parent.parent
 EVAL_FILE = ROOT / "data/processed/startup_sft_eval.json"
@@ -26,16 +26,15 @@ BASE_MODEL = "Qwen/Qwen3.5-4B"
 
 
 def build_prompt(tokenizer, sample):
+    """Plain ChatML, matching LLaMA-Factory's qwen3_nothink template used in training."""
     user = sample["instruction"]
     if sample.get("input"):
         user = f"{user}\n{sample['input']}"
-    messages = [
-        {"role": "system", "content": sample.get("system") or ""},
-        {"role": "user", "content": user},
-    ]
-    return tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=True
-    )
+    parts = []
+    if sample.get("system"):
+        parts.append(f"<|im_start|>system\n{sample['system']}<|im_end|>\n")
+    parts.append(f"<|im_start|>user\n{user}<|im_end|>\n<|im_start|>assistant\n")
+    return "".join(parts)
 
 
 def extract_json(text):
@@ -94,6 +93,7 @@ def generate_all(model, tokenizer, samples, batch_size, max_new_tokens):
             max_new_tokens=max_new_tokens,
             do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
+            eos_token_id=tokenizer.eos_token_id,  # <|im_end|>: base generation_config doesn't stop on it
         )
         for row in gen[:, enc["input_ids"].shape[1] :]:
             outputs.append(tokenizer.decode(row, skip_special_tokens=True))
@@ -119,13 +119,20 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    model = AutoModelForCausalLM.from_pretrained(
+    # Qwen3.5-4B is Qwen3_5ForConditionalGeneration (VL wrapper): the trained
+    # adapter keys live under model.language_model.*, so we must load the same
+    # class LLaMA-Factory used, otherwise peft silently creates empty adapters.
+    model = AutoModelForImageTextToText.from_pretrained(
         BASE_MODEL, dtype=torch.bfloat16, trust_remote_code=True
     ).to("cuda")
     if not args.baseline:
         from peft import PeftModel
 
         model = PeftModel.from_pretrained(model, str(ADAPTER_DIR))
+        lora_b = [p for n, p in model.named_parameters() if "lora_B" in n]
+        nonzero = sum(1 for p in lora_b if p.abs().sum() > 0)
+        print(f"adapter sanity: {nonzero}/{len(lora_b)} lora_B tensors non-zero")
+        assert nonzero == len(lora_b) > 0, "adapter weights failed to load (all zeros)"
     model.eval()
 
     outputs = generate_all(model, tokenizer, samples, args.batch_size, args.max_new_tokens)
