@@ -1,0 +1,36 @@
+{
+  "seed": 20260922,
+  "raw": {
+    "A_founders": 80,
+    "B_employment_credit": 80,
+    "C_projects": 80,
+    "D_training_records": 250,
+    "E_policies": 24,
+    "F_finance_risk": 80,
+    "F_investors": 24,
+    "F_market_signals": 24
+  },
+  "derived": {
+    "founder_profile": 80,
+    "venture_stage_evaluation": 80,
+    "skill_gap_training": 80,
+    "policy_resource_matching": 80,
+    "investment_matching": 80,
+    "risk_opportunity": 80,
+    "startup_cpt_demo": 74
+  },
+  "sft": {
+    "train": 240,
+    "eval": 64,
+    "tasks": {
+      "创业人员画像": 38,
+      "创业能力提升": 38,
+      "创业机会识别": 38,
+      "创业路径规划": 38,
+      "创业计划书生成": 38,
+      "创业项目评估": 38,
+      "创业资源匹配": 38,
+      "创业风险评估": 38
+    }
+  }
+}

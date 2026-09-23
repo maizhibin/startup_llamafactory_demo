@@ -1,0 +1,26 @@
+{
+  "startup_sft_train": {
+    "file_name": "processed/startup_sft_train.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system"
+    }
+  },
+  "startup_sft_eval": {
+    "file_name": "processed/startup_sft_eval.json",
+    "columns": {
+      "prompt": "instruction",
+      "query": "input",
+      "response": "output",
+      "system": "system"
+    }
+  },
+  "startup_cpt_demo": {
+    "file_name": "processed/startup_cpt_demo.jsonl",
+    "columns": {
+      "prompt": "text"
+    }
+  }
+}
